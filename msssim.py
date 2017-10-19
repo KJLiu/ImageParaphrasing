@@ -176,7 +176,7 @@ def MultiScaleSSIM(img1, img2, max_val=255, filter_size=11, filter_sigma=1.5,
   return (np.prod(mcs[0:levels-1] ** weights[0:levels-1]) *
           (mssim[levels-1] ** weights[levels-1]))
 
-def pairwise_distance(path, nsamples=300):
+def pairwise_distance(path, nsamples=100):
     if path is None:
         print('Please enter image path.')
         return
@@ -205,7 +205,7 @@ def pairwise_distance(path, nsamples=300):
     #print(np.mean(msssim_scores))
     return(np.mean(msssim_scores))
     
-def variance(path, nsamples=300):
+def variance(path, nsamples=100):
     if path is None:
         print('Please enter image path.')
         return

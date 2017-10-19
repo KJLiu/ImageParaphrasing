@@ -4,7 +4,7 @@ logs/
 imagenet-vgg-verydeep-19.mat
 
 ### Results ###
-Results/
+Results*
 *.jpg
 MSSSIM.ipynb
 

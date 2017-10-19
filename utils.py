@@ -3,7 +3,8 @@ import matplotlib.pyplot as plt
 import cv2
 import os
 global SHOW_IMAGE 
-SHOW_IMAGE = True
+from scipy.misc import imsave
+
 def rectangle(img, pos, size, color=[1]):
     y, x = pos
     size_y, size_x = size
@@ -23,11 +24,14 @@ def gen_mask(npx, pt = None, blur = 5, rect_size = (20,20), prob = 0.):
         mask = rectangle(mask, pt, rect_size)
         mask = cv2.blur(mask, (blur,blur))
     return mask * uniform_mask
-def color_grid_vis(X, nhw=(4,4)):
-    if not nhw == (4,4):
-        nh = nw = len(X)**0.5
-        
-    (nh, nw) = int(nhw[0]), int(nhw[1])
+def color_grid_vis(X):
+#    if not nhw == (4,4):
+#        nh = nw = len(X)**0.5
+    nw = nh = int(np.sqrt(X.shape[0]))
+    if nh * nw != X.shape[0]:
+        nw +=1
+        nh +=1
+#    (nh, nw) = int(nhw[0]), int(nhw[1])
     h, w = X[0].shape[:2]
     img = np.zeros((h*nh, w*nw, 3))
     for n, x in enumerate(X):
@@ -35,7 +39,14 @@ def color_grid_vis(X, nhw=(4,4)):
         i = n%nw
         img[j*h:j*h+h, i*w:i*w+w, :] = x
     return img
-def plot_img(img, title = None, save_path = None, gray = False):
+def plot_compared(img, content_img_orig, save_path = None, show=True):
+    combined_imgs = np.zeros((img.shape[0] * 2, img.shape[2], img.shape[2] ,3))
+    combined_imgs[::2] = (content_img_orig)/255.
+    combined_imgs[1::2] = my_post(img)
+    combined_imgs_grid = color_grid_vis(combined_imgs)
+    plot_img(combined_imgs_grid, save_path = save_path, show = show)
+def plot_img(img, title = None, save_path = None, gray = False, show = True):
+    plt.figure()
     if gray:
         plt.imshow(img, cmap='gray')
     else:
@@ -45,9 +56,9 @@ def plot_img(img, title = None, save_path = None, gray = False):
     plt.axis('off')
     
     if save_path is not None:
-        plt.savefig(save_path)
-    if SHOW_IMAGE:
-        plt.show()
+        imsave(save_path, img)
+    if show:
+        plt.show() 
 def my_post(img):
     return np.clip(img, 0, 255)/255
 def read_imgs(paths, npx = 64):
@@ -86,6 +97,7 @@ def mkdir(path):
         os.makedirs(path)
 
 def plot_loss(train_loss):
+    plt.figure()
     plt.plot(range(len(train_loss)), train_loss, color='blue', label='Train loss')
     plt.legend(loc="upper right")
     plt.xlabel('#Iteration')
@@ -97,7 +109,7 @@ def plot_loss(train_loss):
 
 from matplotlib import gridspec
 def plot_result(content_img_orig, sample_imgs, save_path = 'result.png'):
-    
+    plt.figure()
     img_mean = np.mean(sample_imgs, axis=0)
     img_std = np.std(sample_imgs, axis = 0)
     
@@ -140,3 +152,14 @@ def plot_result(content_img_orig, sample_imgs, save_path = 'result.png'):
 
     pass
 
+from os import listdir
+from os.path import join, isfile
+def listfile(path):
+    """
+        Input:
+            path: 'Dataset directory'
+        Output:
+            filepaths: All data path including file names.
+    """
+    filenames = [f for f in listdir(path) if isfile(join(path, f))]
+    return [join(path, fname) for fname in filenames]
