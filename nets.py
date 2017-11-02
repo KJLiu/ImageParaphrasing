@@ -59,14 +59,14 @@ def content_layer_loss(p, x, loss_type='Gram'):
         print('Non-Implemented error')
         return None
     return loss
-def sum_content_losses(sess, net, net2, net3, net4, content_img, content_layers, content_layer_weights, content_types, mask_types, mask=None):
+def sum_content_losses(sess, net, net2, net3, net4, content_img, content_layers, content_layer_weights, content_types, mask_types, mask=None, latent_mask = None, latent_sample_rate = 1.):
     sess.run(net['input'].assign(content_img))
     sess.run(net3['input'].assign(content_img))
 
     content_loss = 0.
     loss_collections = []
     print(content_layers, content_layer_weights, content_types, mask_types)
-    for layer, weight, content_type, mask_type in zip(content_layers, content_layer_weights, content_types, mask_types):
+    for idx, (layer, weight, content_type, mask_type) in enumerate(zip(content_layers, content_layer_weights, content_types, mask_types)):
         print('Layer: %s, %s, %d, %s'%(layer, content_type, weight, mask_type))
         if mask_type == 'main':
             p = sess.run(net[layer])
@@ -76,6 +76,17 @@ def sum_content_losses(sess, net, net2, net3, net4, content_img, content_layers,
             x = net4[layer]
         else:
             return 0
+        print("Latent shape: %s"%(p.shape,))
+        if latent_mask[idx] is not None:
+            p = latent_mask[idx] * p
+            x = latent_mask[idx] * x 
+
+        shape = p.shape[1:3]
+        sampling = np.random.rand(*shape) <= latent_sample_rate
+        print(sampling.shape)
+        sampling = sampling.reshape(1,shape[0],shape[1],1)
+        p *= sampling
+        x *= sampling
         p = tf.convert_to_tensor(p)
         tmp_loss = content_layer_loss(p, x, loss_type=content_type) * weight
         loss_collections.append(tmp_loss)

@@ -26,7 +26,7 @@ from scipy import signal
 from scipy.ndimage.filters import convolve
 import tensorflow as tf
 import random
-
+from tqdm import trange
 tf.flags.DEFINE_string('original_image', None, 'Path to PNG image.')
 tf.flags.DEFINE_string('compared_image', None, 'Path to PNG image.')
 tf.flags.DEFINE_string('path', None, 'directory path to iamges.')
@@ -189,12 +189,17 @@ def pairwise_distance(path, nsamples=100):
         return [join(path,f) for f in listdir(path) if isfile(join(path, f)) and ('.jpeg' in f or '.jpg' in f or '.png' in f)]
     def read_img(path, npx = 64):
         img = plt.imread(path)
-        if 'celeba' in path.lower():
+        if 'celeba' in path.lower() and 'data' in path.lower():
             img = img[50:50+128,25:25+128,:] 
         return cv2.resize(img, dsize=(npx, npx), interpolation=cv2.INTER_AREA).astype('int32').reshape(-1,npx,npx,3)
     files = listfile(path)
-    sampled_files_i = [ files[i] for i in np.random.randint(low=0, high=len(files), size=nsamples)]
-    sampled_files_j = [ files[i] for i in np.random.randint(low=0, high=len(files), size=nsamples)]
+    #sampled_files = [ files[i] for i in np.random.randint(low=0, high=len(files), size=nsamples)]
+    #sampled_files_i = [ files[i] for i in np.random.randint(low=0, high=len(files), size=nsamples)]
+    #sampled_files_j = [ files[i] for i in np.random.randint(low=0, high=len(files), size=nsamples)]
+    sampled_files = [ files[i] for i in np.random.permutation(len(files))[:nsamples*2]]
+    sampled_files_i = sampled_files[::2]
+    sampled_files_j = sampled_files[1::2]
+
     #print(sampled_files_i)
     #print(sampled_files_j)
     img = read_img(sampled_files_i[0])
@@ -202,6 +207,14 @@ def pairwise_distance(path, nsamples=100):
     msssim_scores = np.zeros(nsamples)
     for i in trange(nsamples):
         msssim_scores[i]=MultiScaleSSIM(read_img(sampled_files_i[i]), read_img(sampled_files_j[i]), max_val=255)
+    #print(np.mean(msssim_scores))
+    return(np.mean(msssim_scores))
+def pairwise_distance_imgs(imgs, nsamples=100):
+    np.random.shuffle(imgs)
+    imgs = imgs[:nsamples*2]
+    msssim_scores = np.zeros(nsamples)
+    for i in trange(nsamples):
+        msssim_scores[i]=MultiScaleSSIM(imgs[i:i+1], imgs[i+nsamples:i+nsamples+1], max_val=255)
     #print(np.mean(msssim_scores))
     return(np.mean(msssim_scores))
     
@@ -213,16 +226,17 @@ def variance(path, nsamples=100):
     from os import listdir
     import cv2
     import matplotlib.pyplot as plt
-    from tqdm import trange
+
     def listfile(path):
         return [join(path,f) for f in listdir(path) if isfile(join(path, f)) and ('.jpeg' in f or '.jpg' in f or '.png' in f)]
     def read_img(path, npx = 64):
         img = plt.imread(path)
-        if 'celeba' in path.lower():
+        if 'celeba' in path.lower() and 'data' in path.lower():
             img = img[50:50+128,25:25+128,:] 
         return cv2.resize(img, dsize=(npx, npx), interpolation=cv2.INTER_AREA).astype('int32').reshape(-1,npx,npx,3)
     files = listfile(path)
-    sampled_files = [ files[i] for i in np.random.randint(low=0, high=len(files), size=nsamples)]
+    #sampled_files = [ files[i] for i in np.random.randint(low=0, high=len(files), size=nsamples)]
+    sampled_files = [ files[i] for i in np.random.permutation(len(files))[:nsamples]]
     img_list = []
     #print('Reading images from disk.')
     for i in trange(len(sampled_files)):
@@ -234,9 +248,25 @@ def variance(path, nsamples=100):
     for i in trange(nsamples):
         tmp.append(MultiScaleSSIM(imgs[i:i+1],mean_img))
     #print(np.sum(tmp)/(nsamples-1))
-    return np.sum(tmp)/(nsamples-1)
-        
-        
+    return np.sum(tmp)/(nsamples)
+
+def variance_imgs(imgs, nsamples=100):
+    np.random.shuffle(imgs)
+    imgs = imgs[:nsamples]
+    mean_img = np.mean(imgs, axis=0).reshape(-1,64,64,3)
+    tmp = []
+    #print('Computing variance.')
+    for i in trange(nsamples):
+        tmp.append(MultiScaleSSIM(imgs[i:i+1],mean_img))
+    #print(np.sum(tmp)/(nsamples-1))
+    return np.sum(tmp)/(nsamples)
+def difference_imgs(imgs, ref, nsamples=100):
+    np.random.shuffle(imgs)
+    imgs = imgs[:nsamples]
+    tmp = []
+    for i in trange(nsamples):
+        tmp.append(MultiScaleSSIM(imgs[i:i+1], ref))
+    return np.mean(tmp)
 def main(_):
   print('main')
   if FLAGS.original_image is None or FLAGS.compared_image is None:
